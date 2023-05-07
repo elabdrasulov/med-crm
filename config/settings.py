@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sites',
 
     #libs
     'rest_framework',
@@ -47,9 +48,18 @@ INSTALLED_APPS = [
     'drf_api_logger',
     'django_filters',
 
+    #social
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.github',
+    'allauth.socialaccount.providers.vk',
+
+
     #apps
-    'apps.account',
+    'apps.user_account',
     'apps.main',
+    'apps.chat',
 ]
 
 MIDDLEWARE = [
@@ -67,7 +77,10 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [
+            BASE_DIR / 'templates/social',
+            BASE_DIR / 'templates/chat',
+        ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -194,9 +207,20 @@ CORS_ORIGIN_WHITELIST = [
     'https://www.thunderclient.com',
 ]
 
-AUTH_USER_MODEL = 'account.CustomUser'
+AUTH_USER_MODEL = 'user_account.CustomUser'
 
 CELERY_BROKER_URL = "redis://127.0.0.1:6379/0"
 CELERY_RESULT_BACKEND = "redis://127.0.0.1:6379/0"
 
 DRF_API_LOGGER_DATABASE = True
+
+SITE_ID = 1
+ACCOUNT_EMAIL_VERIFICATION = "none"
+LOGIN_REDIRECT_URL = "home"
+ACCOUNT_LOGOUT_ON_GET = True
+
+AUTHENTICATION_BACKENDS = (
+    "allauth.account.auth_backends.AuthenticationBackend",
+)
+
+SILENCED_SYSTEM_CHECKS = ["auth.W004"]

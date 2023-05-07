@@ -65,6 +65,9 @@ class Appointment(models.Model):
     def time(self):
         return self.TIME[self.time_list][-1]
 
+    def __str__(self):
+        return f'{self.user} -> {self.doctor} by {self.time}'
+
 
 class Comment(models.Model):
     user = models.ForeignKey(User, related_name='comments', on_delete=models.CASCADE)

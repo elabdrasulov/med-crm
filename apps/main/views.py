@@ -1,3 +1,4 @@
+from django_filters.rest_framework import DjangoFilterBackend
 from django.shortcuts import get_object_or_404
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
@@ -18,30 +19,10 @@ class DoctorViewSet(ModelViewSet):
     queryset = Doctor.objects.all()
     serializer_class = DoctorSerializer
     permission_classes = [IsAdminOrReadOnly]
-    filter_backends = [filters.OrderingFilter]
+    filter_backends = [filters.OrderingFilter, filters.SearchFilter, DjangoFilterBackend]
+    filterset_fields = ['first_name']
+    search_fields = ['categories__title', 'first_name', 'last_name']
     ordering_fields = ['first_name', 'last_name']
-
-    def get_serializer_context(self):
-        context = super().get_serializer_context()
-        context["request"] = self.request
-        return context
-
-
-    @swagger_auto_schema(manual_parameters=[openapi.Parameter('categories', openapi.IN_QUERY, 'recomendations by categories', type=openapi.TYPE_STRING)])
-    @action(methods=['GET'], detail=False)
-    def recommendations(self, request):
-        categories_title = request.query_params.get('categories')
-        # print(categories_title)
-        categories = Category.objects.get(title__icontains=categories_title)
-
-        queryset = self.get_queryset()
-        queryset = queryset.filter(categories=categories)
-        
-        queryset = max(queryset, key=lambda doctor: doctor.average_rating)
-        serializer = DoctorSerializer(queryset, context={'request':request})
-        return Response(serializer.data, 200)
-
-        # return Response('ok')
 
     @swagger_auto_schema(manual_parameters=[openapi.Parameter('first_name', openapi.IN_QUERY, 'search doctors by name', type=openapi.TYPE_STRING)])
     @action(methods=['GET'], detail=False)
@@ -87,18 +68,13 @@ class ServiceViewSet(mixins.CreateModelMixin,
 
 
 class CommentViewSet(mixins.CreateModelMixin,
+                    mixins.ListModelMixin,
                     mixins.UpdateModelMixin,
                     mixins.DestroyModelMixin,
                     GenericViewSet):
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
-    permission_classes = [IsAuthor, IsAuthenticated]
-    
-    def get_serializer_context(self):
-        context = super().get_serializer_context()
-        context["request"] = self.request
-        return context
-
+    permission_classes = [IsAuthor, IsAuthenticatedOrReadOnly]
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -167,7 +143,11 @@ class AppointmentViewSet(ModelViewSet):
         book_time = request.data.get("time_list")
         doctor = request.data.get("doctor")
 
-        booked_up(book_date, book_time, doctor)
+        if booked_up(book_date, book_time, doctor):
+            return Response(
+                """This time slot is already booked for this doctor.
+                Please choose another time or day""", 400
+            )
 
         super().create(request, *args, **kwargs)
 
@@ -183,12 +163,35 @@ class AppointmentViewSet(ModelViewSet):
         book_time = request.data.get("time_list")
         doctor = request.data.get("doctor")
 
-        booked_up(book_date, book_time, doctor)
+        if booked_up(book_date, book_time, doctor):
+            return Response(
+                """This time slot is already booked for this doctor.
+                Please choose another time or day""", 400
+            )
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        kwargs['partial'] = True
+
+        instance = self.get_object()
+        book_time = request.data.get('time_list')
+
+
+        if book_time:
+            if booked_up(instance.date, book_time, instance.doctor.id):
+                return Response(
+                    """This time slot is already booked for this doctor.
+                    Please choose another time or day""", 400
+                )
+        else:
+            return Response('You can update only booking time', 400)
 
         return super().update(request, *args, **kwargs)
 
+@api_view(["GET"])
+def show_similar_doctors(request, pk):
 
-    def get_serializer_context(self):
-        context = super().get_serializer_context()
-        context["request"] = self.request
-        return context
+    doctor = get_object_or_404(Doctor, id=pk)
+    relative_doctors = Doctor.objects.filter(categories__id__in=doctor.categories.all())
+    serializer = DoctorSerializer(relative_doctors, many=True)
+    return Response(serializer.data)

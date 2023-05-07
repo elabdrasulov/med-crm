@@ -1,4 +1,5 @@
-
+from .models import Appointment
+from rest_framework.response import Response
 
 def booked_up(book_date, book_time, doctor):
     """
@@ -9,10 +10,8 @@ def booked_up(book_date, book_time, doctor):
     entries = Appointment.objects.filter(doctor=doctor)
     if entries:
         for e in entries:
-            if str(e.date) == str(book_date) and str(e.book_time) == str(book_time):
-                return Response(
-                    """
-                    This time slot is already booked for this doctor. 
-                    Please choose another time or day
-                    """
-                )
+            if str(e.date) == str(book_date):
+                if str(e.time) == str(e.TIME[int(book_time)][-1]):
+                    return True
+    else:
+        return False

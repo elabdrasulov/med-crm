@@ -26,7 +26,7 @@ class CustomUserManager(BaseUserManager):
 class CustomUser(AbstractBaseUser):
     use_in_migrations = True
 
-    username = None
+    username = models.CharField(max_length=55, blank=True, null=True)
     email = models.EmailField(unique=True)
     name = models.CharField(max_length=55)
     last_name = models.CharField(max_length=55)
@@ -34,8 +34,8 @@ class CustomUser(AbstractBaseUser):
     is_staff = models.BooleanField(default=False)
     activation_code = models.CharField(max_length=8, blank=True)
 
-    USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = []
+    USERNAME_FIELD = 'username'
+    REQUIRED_FIELDS = ['email']
 
     objects = CustomUserManager()
 
@@ -64,6 +64,9 @@ class CustomUser(AbstractBaseUser):
         
     def password_confirm(self):
         password_confirm.delay(self.id)
+
+    def __str__(self):
+        return self.email
 
     # def send_activation_email(self):
     #     activation_url = f"{config('LINK')}account/activate/{self.activation_code}"

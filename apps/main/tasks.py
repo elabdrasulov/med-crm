@@ -6,7 +6,7 @@ from .models import Appointment
 @app.task
 def create_an_appointment(a_id):
     """
-    Задача для отправки уведомления по электронной почте при успешном создании заказа. 
+    Задача для отправки уведомления по электронной почте при успешном создании записи. 
     """
     entry = Appointment.objects.get(id=a_id)
     subject = f'Appointment #{a_id}'
